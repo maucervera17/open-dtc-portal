@@ -1,0 +1,10 @@
+.env*
+test
+scripts
+README.md
+CONTRIBUTING.md
+docs
+node_modules
+**/__pycache__
+**/*.pyc
+.data/

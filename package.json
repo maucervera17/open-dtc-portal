@@ -1,0 +1,29 @@
+{
+  "name": "open-dtc-portal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "mcp": "node scripts/portal-mcp-bridge.mjs",
+    "mcp:configure": "node scripts/configure-portal-mcp.mjs",
+    "mcp:install": "node scripts/install-portal-mcp.mjs",
+    "mcp:check": "node scripts/check-portal-mcp.mjs"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
+    "@google/genai": "^2.24.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@vercel/blob": "^2.8.2",
+    "pdf-lib": "^1.17.1",
+    "zod": "^4.6.7"
+  },
+  "overrides": {
+    "zod": "$zod"
+  },
+  "version": "1.0.0",
+  "description": "Open-source, self-hosted portal for DTC brands: Meta Ads performance, alerts, AI analyst and creative intelligence.",
+  "license": "MIT"
+}

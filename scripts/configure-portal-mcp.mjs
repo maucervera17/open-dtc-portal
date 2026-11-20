@@ -1,0 +1,17 @@
+import {createInterface} from 'node:readline';
+import {Writable} from 'node:stream';
+import {mkdir,writeFile,chmod} from 'node:fs/promises';
+if(!process.stdin.isTTY)throw Error('Ejecuta este comando en una terminal interactiva.');
+const visible=createInterface({input:process.stdin,output:process.stdout});
+const base=await new Promise(resolve=>visible.question('URL del portal (ej. https://portal.example.com): ',resolve));visible.close();
+const url=new URL(String(base).trim().replace(/\/+$/,'')+'/api/mcp');
+if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)throw Error('La URL debe ser HTTPS y sin credenciales.');
+const out=new Writable({write(_chunk,_enc,done){done();}});
+const rl=createInterface({input:process.stdin,output:out,terminal:true});
+process.stdout.write('Pega la clave de Conectores (oculta): ');
+const token=await new Promise(resolve=>rl.question('',resolve));rl.close();process.stdout.write('\n');
+if(!/^dtcmcp_[\w-]{43}\.[\w-]{43}$/.test(token.trim()))throw Error('Formato de clave inválido.');
+const dir=new URL('../.data/',import.meta.url);await mkdir(dir,{recursive:true,mode:0o700});
+const file=new URL('mcp-credentials.json',dir);
+await writeFile(file,JSON.stringify({url:url.href,token:token.trim()}),{mode:0o600});await chmod(file,0o600);
+console.log('Clave guardada localmente. Ejecuta npm run mcp:install.');

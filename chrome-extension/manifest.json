@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Ad Saver · Guardar anuncios",
+  "version": "1.1.0",
+  "description": "Guarda referencias de Meta Ad Library en tus boards del portal.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.facebook.com/ads/library/*",
+        "https://facebook.com/ads/library/*"
+      ],
+      "js": [
+        "config.js",
+        "extract.js",
+        "inline.js"
+      ],
+      "css": [
+        "inline.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

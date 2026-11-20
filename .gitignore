@@ -1,0 +1,12 @@
+node_modules/
+.env*
+!.env.example
+.data/
+.vercel/
+output/
+.DS_Store
+__pycache__/
+*.pyc
+services/transcription/model/
+*.log
+*.zip

@@ -1,0 +1,5 @@
+[data-adsaver-save].adsaver-save-bar{display:flex!important;align-items:center!important;justify-content:flex-end!important;padding:12px 14px!important;background:#f1f5fa!important;border-bottom:1px solid #dce5f0!important;box-sizing:border-box!important;width:100%!important;position:relative!important;z-index:1!important}
+[data-adsaver-save] a.adsaver-save-ad{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;min-height:38px!important;padding:0 14px!important;border:1px solid #244b7d!important;border-radius:10px!important;background:#fff!important;color:#214777!important;font:600 13px/1.3 system-ui,-apple-system,sans-serif!important;text-decoration:none!important;cursor:pointer!important;box-shadow:0 1px 3px #21477712!important;transition:background .15s ease!important}
+[data-adsaver-save] a.adsaver-save-ad:hover{background:#214777!important;color:#fff!important}
+[data-adsaver-save] a.adsaver-save-ad:focus-visible{outline:3px solid #6999d6!important;outline-offset:3px!important}
+[data-adsaver-save] a.adsaver-save-ad>span:first-child{font-size:22px!important;line-height:1!important}

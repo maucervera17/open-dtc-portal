@@ -1,0 +1,12 @@
+AD SAVER · GUARDAR ANUNCIOS
+1. Descomprime esta carpeta.
+2. Abre chrome://extensions y activa Modo de desarrollador.
+2b. Edita config.js y escribe la URL de tu portal desplegado.
+3. Pulsa Cargar descomprimida y selecciona esta carpeta (la que contiene manifest.json).
+4. Abre o recarga Meta Ad Library. Verás Guardar en el portal dentro de cada anuncio.
+5. Pulsa Guardar en el portal en el anuncio que quieras. Inicia sesión si hace falta y confirma el anuncio.
+6. En Guardados · Boards puedes organizarlo y seguir la marca.
+Solo se ejecuta automáticamente en Meta Ad Library. No almacena claves ni sesiones.
+Para actualizar: reemplaza los archivos de la carpeta instalada, pulsa Recargar en chrome://extensions y recarga Meta Ad Library.
+Las referencias inactivas se conservan. Meta puede no ofrecer todos los anuncios históricos.
+Si Meta no expone el archivo de video, se conserva la referencia y su enlace original.

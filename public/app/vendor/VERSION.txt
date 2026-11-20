@@ -1,0 +1,4 @@
+Chart.js v4.5.1 (UMD, minified), MIT License.
+Source: https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js
+License: LICENSE.chartjs.txt
+To upgrade, replace both files and update this note.
