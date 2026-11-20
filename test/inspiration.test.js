@@ -78,7 +78,7 @@ test('Gemini produces a practical three-step recipe and rejects malformed recipe
 test('keyword discovery uses validated filters, caches requests and keeps results out of tracked statistics',async()=>{
  const store=memoryStore();let calls=0,request;
  const service=createInspiration({env,store,now,fetch:async(u,o)=>{calls++;request={u,body:JSON.parse(o.body)};return {ok:true,json:async()=>({success:true,searchResults:[raw,raw],cursor:'page-two',searchResultsCount:500,credits_remaining:90})};}});
- const p={query:'adaptógenos',country:'MX',media:'VIDEO'};
+ const p={query:'producto ejemplo',country:'MX',media:'VIDEO'};
  const first=await service.discover(p);assert.equal(first.results.length,1);assert.equal(first.has_more,true);assert.equal(first.cursor,undefined);assert.match(request.u,/search\/ads$/);assert.equal(request.body.media_type,'VIDEO');assert.equal(request.body.status,'ACTIVE');
  assert.equal((await service.list()).ads.length,0);
  assert.equal((await service.discover(p)).cached,true);assert.equal(calls,1);
@@ -93,7 +93,7 @@ test('keyword discovery rejects bad input and malformed provider data',async()=>
 });
 test('impression ordering and filter combinations use separate provider searches and retain reported totals',async()=>{
  const store=memoryStore();let requests=[];const service=createInspiration({env:{...env,INSPIRATION_CALL_LIMIT:'5'},store,now,fetch:async(u,o)=>{requests.push(JSON.parse(o.body));return {ok:true,json:async()=>({success:true,searchResults:[raw],cursor:'page-'+requests.length,...(requests.length===1?{searchResultsCount:1000}:{})})};}});
- const input={query:'adaptógenos',country:'ALL',media:'ALL',sort:'total_impressions',status:'ALL',language:'ES',matching:'keyword_exact_phrase'};
+ const input={query:'producto ejemplo',country:'ALL',media:'ALL',sort:'total_impressions',status:'ALL',language:'ES',matching:'keyword_exact_phrase'};
  assert.equal((await service.discover(input)).reported_total,1000);assert.equal(requests[0].sort_by,'total_impressions');assert.equal(requests[0].language,'ES');assert.equal(requests[0].status,'ALL');
  assert.equal((await service.discover({...input,more:true})).reported_total,1000);
  await service.discover({...input,sort:'relevancy_monthly_grouped'});assert.equal(requests.length,3);
