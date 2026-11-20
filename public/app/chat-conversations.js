@@ -1,21 +1,20 @@
 import { h } from '/app/dom.js';
 import { icon } from '/app/icons.js';
-import { cdmxToday, shiftDate, shortDate, truncate } from '/app/format.js';
+import { localToday, dayIn, dateTimeIn, shiftDate, shortDate, truncate } from '/app/format.js';
 
 // The list of saved conversations: pure view code. The shared chat state lives in chat-panel.js; this module only turns
 // { items, currentId, status } into DOM and reports clicks through the handlers. Titles are text nodes, never markup.
 export const GROUPS = Object.freeze(['Hoy', 'Ayer', 'Últimos 7 días', 'Anteriores']);
-const dayOf = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' });
 
-// Items arrive newest first and stay in that order inside their group. Days are Mexico City days, like the rest of the panel.
+// Items arrive newest first and stay in that order inside their group. Days are days of the account's time zone, like the rest of the panel.
 export function groupConversations(items, now = new Date()) {
-  const today = cdmxToday(now);
+  const today = localToday(now);
   const yesterday = shiftDate(today, -1);
   const weekStart = shiftDate(today, -7);
   const buckets = new Map(GROUPS.map(label => [label, []]));
   for (const item of items) {
     const at = new Date(item.updated_at);
-    const day = Number.isNaN(at.getTime()) ? '' : dayOf.format(at);
+    const day = Number.isNaN(at.getTime()) ? '' : dayIn(at);
     const label = day === today ? 'Hoy' : day === yesterday ? 'Ayer' : day && day >= weekStart && day < yesterday ? 'Últimos 7 días' : 'Anteriores';
     buckets.get(label).push(item);
   }
@@ -23,9 +22,9 @@ export function groupConversations(items, now = new Date()) {
 }
 
 const MAX_TITLE = 80;
-const clock = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const clock = { format: at => dateTimeIn(at, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) };
 
-// "hace 5 min", "hace 3 h", "ayer 14:20" or "12 sep" (Mexico City days). Unparseable dates give an empty string.
+// "hace 5 min", "hace 3 h", "ayer 14:20" or "12 sep" (days of the account's time zone). Unparseable dates give an empty string.
 export function relativeTime(iso, now = new Date()) {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '';
@@ -33,8 +32,8 @@ export function relativeTime(iso, now = new Date()) {
   const minutes = Math.floor(ms / 60000);
   if (minutes < 1) return 'hace un momento';
   if (minutes < 60) return `hace ${minutes} min`;
-  const day = dayOf.format(at);
-  const today = cdmxToday(now);
+  const day = dayIn(at);
+  const today = localToday(now);
   if (day === today) return `hace ${Math.floor(ms / 3600000)} h`;
   if (day === shiftDate(today, -1)) return `ayer ${clock.format(at)}`;
   return shortDate(day);

@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { authorized } from '../lib/auth/bearer.js';
 import { localDate, recipientsFor } from '../lib/report.js';
 import { collect } from '../lib/meta.js';
+import { resolveProfile } from '../lib/account-profile.js';
+import { ConfigError, describeChange, recordAccountProfile, setActiveProfile } from '../lib/locale.js';
 import { manualWindow } from '../lib/model.js';
 import { makePdf } from '../lib/pdf.js';
 const required = ['META_ACCESS_TOKEN','META_API_VERSION'];
@@ -22,11 +24,11 @@ export default async function handler(req, res) {
     if(!['sales','social'].includes(kind))throw Error('kind');
     if (!['preview','send'].includes(body?.mode)) throw Error('mode');
     window = manualWindow(body.since, body.until);
-    if (window.until >= localDate()) throw Error('Use completed days');
   } catch { return res.status(400).json({ error: 'Use mode preview or send, and 1-31 completed days (since/until YYYY-MM-DD)' }); }
   if (body.mode === 'send' && env.VERCEL_ENV && env.VERCEL_ENV !== 'production') return res.status(409).json({error:'Sending requires production'});
   if (body.mode === 'send' && env.REPORT_ENABLED !== 'true') return res.status(409).json({ error: 'Email sending disabled' });
   if (required.some(k => !env[k]) || !/^v\d+\.\d+$/.test(env.META_API_VERSION)) return res.status(503).json({ error: 'Configuration incomplete' });
+  const redisConfigured = ['UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN'].every(k => env[k]);
   const redis = async command => {
     const response = await fetch(env.UPSTASH_REDIS_REST_URL, { method: 'POST', headers: { Authorization: `Bearer ${env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(command), signal: AbortSignal.timeout(8000) });
     if (!response.ok) throw new Error('Storage unavailable');
@@ -34,11 +36,32 @@ export default async function handler(req, res) {
     if (body.error) throw new Error('Storage command failed');
     return body.result;
   };
+  // "Completed days" are days that already ended in the account's time zone (REPORT_TIMEZONE, else the ad account's own).
+  try {
+    const resolvedProfile = await resolveProfile({ env, store: redisConfigured ? redis : undefined });
+    if (!resolvedProfile.resolved) { console.error('meta_report_failed', { stage: 'profile_unresolved' }); return res.status(503).json({ error: 'Profile unavailable; will retry' }); }
+    const { profile } = resolvedProfile;
+    if (window.until >= localDate(new Date(), profile.timezone)) return res.status(400).json({ error: 'Use mode preview or send, and 1-31 completed days (since/until YYYY-MM-DD)' });
+  } catch (error) {
+    if (error instanceof ConfigError) { console.error('meta_report_failed', { stage: 'config', variable: error.variable }); return res.status(503).json({ error: 'Configuration invalid' }); }
+    console.error('meta_report_failed', { stage: 'profile' });
+    return res.status(502).json({ error: 'Report failed; requires review' });
+  }
+  // The account's currency or time zone can change over time: stored history then mixes units, so the report says so.
+  const profileNotes = async collected => {
+    setActiveProfile(collected.profile);
+    if (!redisConfigured) return [];
+    try {
+      const { change } = await recordAccountProfile({ store: redis, accountId: env.META_AD_ACCOUNT_ID, account: collected.account });
+      const text = describeChange(change);
+      return text ? [text] : [];
+    } catch { return []; }
+  };
   try {
     stage='collect';
     if (body.mode === 'preview') {
       const collected = await collect(window, env);
-      const data=selectCampaigns(collected.data,kind),warnings=collected.warnings.filter(w=>data.some(c=>w.startsWith(c.name+' /')));
+      const data=selectCampaigns(collected.data,kind),warnings=[...collected.warnings.filter(w=>data.some(c=>w.startsWith(c.name+' /'))),...await profileNotes(collected)];
       if(!data.length)return res.status(200).json({status:'no_active_campaigns'});
       const instagram=kind==='social'?await collectInstagram(window,env):null;
       const pdf = await makePdf(window, data, warnings,{kind,instagram});
@@ -61,7 +84,7 @@ export default async function handler(req, res) {
       if (!stablePayload) {
         stage='collect';
         const collected = await collect(window, env);
-      const data=selectCampaigns(collected.data,kind),warnings=collected.warnings.filter(w=>data.some(c=>w.startsWith(c.name+' /')));
+      const data=selectCampaigns(collected.data,kind),warnings=[...collected.warnings.filter(w=>data.some(c=>w.startsWith(c.name+' /'))),...await profileNotes(collected)];
       if(!data.length)return res.status(200).json({status:'no_active_campaigns'});
         const instagram=kind==='social'?await collectInstagram(window,env):null;
         const report = shortEmail(window, data, kind,instagram);

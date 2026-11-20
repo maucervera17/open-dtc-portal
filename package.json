@@ -7,7 +7,8 @@
     "mcp": "node scripts/portal-mcp-bridge.mjs",
     "mcp:configure": "node scripts/configure-portal-mcp.mjs",
     "mcp:install": "node scripts/install-portal-mcp.mjs",
-    "mcp:check": "node scripts/check-portal-mcp.mjs"
+    "mcp:check": "node scripts/check-portal-mcp.mjs",
+    "demo": "node demo/run.mjs"
   },
   "engines": {
     "node": "22.x"

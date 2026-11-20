@@ -1,5 +1,5 @@
 import { h, replace } from '/app/dom.js';
-import { delta, rangeFor, shortDate, timeOf, int, ND, cdmxToday } from '/app/format.js';
+import { delta, rangeFor, shortDate, timeOf, int, ND, localToday, getLocale } from '/app/format.js';
 import { icon } from '/app/icons.js';
 import { perHundred, overHundred, followText, allNote, DIRECT_BUY_NOTE, WEB_NOTE } from '/app/funnel.js';
 import { PROVISIONAL_LABEL, ADJUSTABLE_LABEL } from '/app/chart-config.js';
@@ -32,8 +32,8 @@ export function rangeView({ ctx, title, module, endpoint, draw }) {
   ctx.onCleanup(destroy);
 
   const initial = shared.custom || rangeFor(shared.days);
-  const fromInput = h('input', { type: 'date', class: 'input', 'aria-label': 'Desde', required: true, max: cdmxToday(), value: initial.from });
-  const toInput = h('input', { type: 'date', class: 'input', 'aria-label': 'Hasta', required: true, max: cdmxToday(), value: initial.to });
+  const fromInput = h('input', { type: 'date', class: 'input', 'aria-label': 'Desde', required: true, max: localToday(), value: initial.from });
+  const toInput = h('input', { type: 'date', class: 'input', 'aria-label': 'Hasta', required: true, max: localToday(), value: initial.to });
   const period = h('select', { class: 'input period-select', 'aria-label': 'Periodo', onchange: () => {
     customForm.hidden = period.value !== 'custom';
     if (period.value === 'custom') return;
@@ -49,7 +49,7 @@ export function rangeView({ ctx, title, module, endpoint, draw }) {
   const customForm = h('form', { class: 'date-range-form', hidden: !shared.custom, onsubmit: event => {
     event.preventDefault();
     const from = fromInput.value, to = toInput.value;
-    if (!from || !to || from > to || to > cdmxToday() || Date.parse(to) - Date.parse(from) > 731 * 86400000) {
+    if (!from || !to || from > to || to > localToday() || Date.parse(to) - Date.parse(from) > 731 * 86400000) {
       notice.textContent = 'Selecciona fechas válidas, sin días futuros, en un intervalo máximo de 2 años.';
       return;
     }
@@ -102,7 +102,7 @@ export function rangeView({ ctx, title, module, endpoint, draw }) {
     pageHeader({
       ctx, title,
       // Both wordings are in the DOM; the stylesheet shows the long one on wide screens and the short one on phones.
-      subtitle: h('span', {}, h('span', { class: 'sub-long' }, 'Atribución predeterminada de Ads Manager. Cifras en MXN.'), h('span', { class: 'sub-short' }, 'Cifras en MXN · atribución de Ads Manager')),
+      subtitle: h('span', {}, h('span', { class: 'sub-long' }, `Atribución predeterminada de Ads Manager. Cifras en ${getLocale().currency}.`), h('span', { class: 'sub-short' }, `Cifras en ${getLocale().currency} · atribución de Ads Manager`)),
       actionsClass: 'period-actions', actions: [periodControl, refreshButton],
     }),
     customForm,

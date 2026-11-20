@@ -1,5 +1,5 @@
 import { h } from '/app/dom.js';
-import { shortDate, int, ND } from '/app/format.js';
+import { shortDate, int, moneyAxis, ND } from '/app/format.js';
 import { badge, table } from '/app/ui.js';
 
 // "Evolución" card for the Píxel page: the weekly journal rows (computed by the daily job) as four small sparklines and a
@@ -11,7 +11,7 @@ const isNum = v => typeof v === 'number' && Number.isFinite(v);
 const one = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
 const oneFixed = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const rate = v => (isNum(v) ? one.format(v) : ND);
-const money = v => (isNum(v) ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v) : ND);
+const money = moneyAxis;
 
 function svgNode(tag, attrs) {
   const node = document.createElementNS(NS, tag);

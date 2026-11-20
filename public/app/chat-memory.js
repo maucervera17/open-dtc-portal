@@ -1,5 +1,6 @@
 import { h } from '/app/dom.js';
 import { icon } from '/app/icons.js';
+import { moneyWith } from '/app/format.js';
 
 // The agent's memory of decisions: short notes both dashboard users share. Pure view code over the state kept in chat-panel.js;
 // every string that comes from the server is a text node. The server applies the same rules, this only saves a round trip.
@@ -62,7 +63,7 @@ function noteRow(note, { editingId, confirmingId, handlers }) {
 
 // Nodes for the whole panel: back button, explanation, pending suggestions, notes with their actions and the add form.
 export function memoryPanelNodes({ memory, editingId = null, confirmingId = null, notice = '', draft = '', handlers }) {
-  const input = h('input', { class: 'mem-input', type: 'text', maxlength: MEMORY_LIMITS.text, 'aria-label': 'Nueva nota', placeholder: 'Ej.: El CPA objetivo es 80 pesos' });
+  const input = h('input', { class: 'mem-input', type: 'text', maxlength: MEMORY_LIMITS.text, 'aria-label': 'Nueva nota', placeholder: `Ej.: El CPA objetivo es ${moneyWith(80, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` });
   input.value = draft;
   input.addEventListener('input', () => handlers.onDraft(String(input.value)));
   input.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); handlers.onAdd(String(input.value)); } });

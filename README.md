@@ -7,12 +7,32 @@ An open-source, self-hosted portal for a direct-to-consumer (DTC) brand. It does
 
 It is an open, self-hosted alternative inspired by tools such as Atria. It is not affiliated with, endorsed by, or derived from any of them.
 
-> **The UI is in Spanish** (es-MX), and the product is built around Meta Ads accounts that use **MXN** and the **America/Mexico_City** time zone. See [Scope and limits](#scope-and-limits).
+> **The UI is in Spanish** (es-MX). Currency and time zone are not fixed: the portal uses the ones of your Meta ad account. See [Currency and time zone](#currency-and-time-zone).
+
+---
+
+## Try the demo
+
+Click through every screen with fictional data. No accounts, API keys or network access are needed:
+
+```sh
+npm install
+npm run demo
+```
+
+Then open <http://127.0.0.1:3060/app/>. You are signed in automatically as `demo@example.com`. Set `PORT` to use another port (`PORT=3061 npm run demo`). Press Ctrl+C to stop.
+
+- **What you get:** a made-up brand, "Example Co.", with 60 days of campaigns, creatives, pixel events, Instagram, alerts, a weekly journal, an analyst chat, and the competitor radar, saved library and daily plan (all with placeholder images). A small "Demo mode — fictional data" badge marks every page.
+- **How it works:** a plain Node server (`demo/`) serves `public/` with the rewrites from `vercel.json` and runs the portal's real `/api` handlers against an in-memory store and fake Meta, Instagram, ScrapeCreators, Resend and Gemini APIs. The portal's collectors, validators and views run unchanged; the data is generated deterministically in `demo/world.js`.
+- **AI answers are canned.** The chat, analysis and plan are written by rules, not by a model, and say so.
+- **Safe by construction:** the server only listens on `127.0.0.1`, builds its own configuration (your environment is never read), refuses every outbound network call, and the auto sign-in lives only in the demo entry script: nothing under `api/` or `lib/` imports it, so a deployment can never expose it.
+- Everything resets when you stop the server. The fictional account is **USD** and **America/New_York** by default (the fake Graph API reports them, like a real account would; `startDemo({ profile })` accepts any valid ISO currency and IANA zone). Ad previews are unavailable because there is no real Facebook ad to show.
 
 ---
 
 ## Contents
 
+- [Try the demo](#try-the-demo)
 - [Feature tour](#feature-tour)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
@@ -20,6 +40,7 @@ It is an open, self-hosted alternative inspired by tools such as Atria. It is no
 - [Cron jobs](#cron-jobs)
 - [MCP server (Claude Code, Codex)](#mcp-server-claude-code-codex)
 - [Chrome extension: Ad Saver](#chrome-extension-ad-saver)
+- [Currency and time zone](#currency-and-time-zone)
 - [Scope and limits](#scope-and-limits)
 - [Third-party licenses](#third-party-licenses)
 - [Contributing](#contributing) / [License](#license)
@@ -87,7 +108,7 @@ Main folders: `api/` (functions), `lib/` (server logic, agent, auth, inspiration
 
 ## Quick start
 
-**Requirements:** Node 22, a Meta ad account (MXN, `America/Mexico_City`) with an access token, an Upstash Redis database, and a Resend account for sign-in emails.
+**Requirements:** Node 22, a Meta ad account (any currency and time zone) with an access token, an Upstash Redis database, and a Resend account for sign-in emails.
 
 ### Run the tests
 
@@ -156,7 +177,10 @@ Every environment variable the code reads. All are listed, with empty values, in
 | `META_TOKEN_EXPIRES_AT` | no | `YYYY-MM-DD` or `never`; drives the renewal banner. |
 | `PIXEL_STATS_ENABLED` | no | `false` skips pixel stats (shared pixels). |
 | `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_USER_ID`, `INSTAGRAM_USERNAME` | for Redes | Instagram Graph credentials. All three are required together. |
-| `TARGET_CPA`, `TARGET_ROAS` | no | Targets used by alerts and the analyst. |
+| `TARGET_CPA`, `TARGET_ROAS` | no | Targets used by alerts and the analyst. `TARGET_CPA` is an amount in the ad account currency; `TARGET_ROAS` is a ratio. |
+| `REPORT_CURRENCY` | no | ISO 4217 code (e.g. `USD`, `EUR`, `JPY`). Overrides the currency of the ad account. **Only relabels amounts, it never converts them**: leave empty unless you know why. An invalid code is a configuration error. |
+| `REPORT_TIMEZONE` | no | IANA time zone (e.g. `America/New_York`). Overrides the time zone of the ad account for "today", "yesterday", report windows and cron day boundaries. Meta still cuts its own insight days in the account's zone. An invalid name is a configuration error. |
+| `MIN_SPEND` | no | Minimum spend (account currency, per 7-day window) before an ad can be judged for fatigue or a STOP/SCALE call. Default: about USD 15 in your currency (see below). |
 
 **AI analyst**
 
@@ -198,7 +222,7 @@ Every environment variable the code reads. All are listed, with empty values, in
 
 ## Cron jobs
 
-Defined in [`vercel.json`](vercel.json). All are protected by `CRON_SECRET` and run daily (UTC).
+Defined in [`vercel.json`](vercel.json). All are protected by `CRON_SECRET` and run daily. **Vercel cron schedules are always UTC**, so the times below are UTC. Only the *schedule* is UTC: every job works on the calendar day of the account's time zone (DST included), so a run that fires at 10:00 UTC still reports the right local day. Move the `schedule` entries in `vercel.json` if you want the emails to land at a convenient local hour (for example `0 16 * * *` is 11:00 in New York in winter and 12:00 in summer; adjust twice a year if the exact local hour matters).
 
 | Time | Path | What it does |
 |---|---|---|
@@ -240,6 +264,18 @@ It only runs on `facebook.com/ads/library` and stores no credentials. (Instructi
 
 ---
 
+## Currency and time zone
+
+Nothing is hard-coded to one market. The **Meta ad account's own `currency` and `timezone_name`** (read from the Graph API) are the source of truth.
+
+- **Resolution order:** `REPORT_CURRENCY` / `REPORT_TIMEZONE` (if set and valid) > what the ad account reports > a UTC / USD fallback used only until the account has been read once. The result is remembered in Redis (`dtc:dash:profile:<account>`) and the account is re-read at most once an hour by signed-in requests and crons, so a change of currency or time zone is picked up (and warned about) rather than masked. If the account cannot be read and nothing is stored, crons and reports stop without advancing their cursors instead of guessing UTC and the browser receives it in `GET /api/dash/me` (`profile.currency`, `profile.timezone`) and in the status payload. Money payloads carry `currency` and `timezone`.
+- **Money** is formatted with `Intl.NumberFormat` in the resolved currency, with that currency's own minor units (JPY has no decimals, KWD has three) in the UI, PDFs, emails, MCP outputs, AI facts and prompts. The text locale stays Spanish (`es-MX`), so number grouping is `1,234.50`. PDFs use a standard font: when a currency symbol cannot be drawn (for example the rupee), the ISO code is printed instead.
+- **Days.** "Today", "yesterday", "last N days", the completed-days check of `/api/report`, the cron day boundaries, the pixel and Instagram day buckets and the browser's date pickers all use the resolved time zone. Dates are plain calendar dates (`YYYY-MM-DD`) and day boundaries come from the platform tz database, so daylight-saving changes (23 and 25 hour days) are handled.
+- **Account changes.** If the ad account's currency or time zone differs from what was stored, the portal records a warning (kept 400 days, as long as the snapshots that mix the two units), shows a banner in the app, and adds a note to the next PDF. It never silently mixes units.
+- **Money-sized thresholds** do not assume one currency. The fatigue/analyst sample gate (`MIN_SPEND`) defaults to roughly USD 15 expressed in your currency, from a small rough rate table in `lib/locale.js` (USD 15, EUR about 14, JPY 2,250, a peso-sized currency about 300); set `MIN_SPEND` to be exact. The analyst's "minimum spend to stop" is already relative (2 x your target CPA, else 2 x the account CPA). The Analíticas evidence levels scale with the same USD 10 unit. `TARGET_CPA` is in your currency.
+- **Competitor CPM estimates** (Inspiración) are explicitly in USD: they are an assumed market CPM, not your account.
+- `REPORT_CURRENCY` does **not convert**. Meta reports spend in the account currency; the override only changes the label and formatting.
+
 ## Scope and limits
 
 Honest list of what this is **not**:
@@ -247,7 +283,7 @@ Honest list of what this is **not**:
 - **No global ad library.** It only knows the brands you add and the pages it has fetched. Coverage depends on provider credits and pagination, and the UI labels partial coverage as partial.
 - **No history before you start tracking**, no proprietary models trained on other advertisers' spend, no TikTok/LinkedIn connectors, no image/video generation and no automatic campaign launching.
 - **Meta Ads only** for performance. Sales and funnel numbers come from Meta insights and the pixel. There is **no Shopify or other store integration**.
-- **Single ad account, MXN, `America/Mexico_City`.** The Meta collector rejects accounts with another currency or time zone, and formatting, report windows and prompts assume them. Supporting other markets means editing `lib/meta.js`, `lib/meta-client.js`, `lib/dates.js` and the formatters in `public/app/format.js`.
+- **Single ad account, one currency and one time zone.** Any currency and time zone work, but a deployment follows exactly one account. Amounts are never converted between currencies (see [Currency and time zone](#currency-and-time-zone)).
 - **Spanish UI and prompts.** Copy is hard-coded in Spanish; there is no i18n layer.
 - **Topic detection is keyword-based** and tuned for consumer-wellness ads (`public/app/views/market-data.js`); edit the `themes` list for your category.
 - **AI output is advice, not truth.** The analyst only recommends and cannot change anything in Meta. Gemini/Claude results need human review.

@@ -20,6 +20,7 @@ import { createChatDrawer } from '/app/chat-drawer.js';
 import social from '/app/views/social.js';
 import { icon } from '/app/icons.js';
 import { setAlertCount, onAlertCount } from '/app/ui.js';
+import { configureLocale, getLocale } from '/app/format.js';
 import { alertCount } from '/app/views/alertas.js';
 
 // Registered data views, in navigation order. Each entry: { route, label, render(ctx) => Node | Promise<Node> }.
@@ -89,6 +90,8 @@ export function start(root, { location, history, api: injected } = {}) {
   async function load() {
     const result = await api.me();
     me = result.ok ? result.data : null;
+    // Currency and time zone come from the ad account; every formatter follows them.
+    if (me?.profile) configureLocale(me.profile);
   }
 
   // Builds the persistent frame: top bar, sidebar, content column and the docked agent. Navigation only swaps what is inside
@@ -183,6 +186,11 @@ export function start(root, { location, history, api: injected } = {}) {
     const banner = me.token_warning ? h('div', { class: 'banner', role: 'alert' },
       h('strong', {}, 'El token de acceso de Meta vence pronto. '),
       'Genera un token de usuario del sistema para evitar interrupciones en el panel.') : null;
+    // The ad account changed currency or time zone: stored snapshots before that day use the old unit and must not be compared.
+    const change = me.profile?.warning;
+    const profileBanner = change ? h('div', { class: 'banner', role: 'alert' },
+      h('strong', {}, 'La cuenta publicitaria cambió de moneda o zona horaria. '),
+      `Antes: ${change.from.currency} · ${change.from.timezone}. Ahora: ${change.to.currency} · ${change.to.timezone}. Los datos guardados antes del ${String(change.at).slice(0, 10)} están en la unidad anterior: no los compares directamente.`) : null;
     const doLogout = async () => { await api.logout(); me = null; teardown(); clearConversation(); go('#/login'); };
     const logout = h('button', { type: 'button', class: 'btn btn-ghost btn-logout', onclick: doLogout }, 'Salir');
 
@@ -245,8 +253,9 @@ export function start(root, { location, history, api: injected } = {}) {
       nav,
       h('div', { class: 'content' },
         banner,
+        profileBanner,
         main,
-        h('footer', { class: 'footnote' }, 'Cifras en MXN. Atribución predeterminada de Ads Manager.')));
+        h('footer', { class: 'footnote' }, `Cifras en ${getLocale().currency}. Atribución predeterminada de Ads Manager.`)));
     replace(workspace, shellEl, chat.dialog);
 
     return {

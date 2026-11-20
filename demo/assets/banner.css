@@ -1,0 +1,6 @@
+.dtc-demo-banner{position:fixed;left:12px;bottom:12px;z-index:2147483000;display:flex;gap:8px;align-items:center;max-width:calc(100vw - 24px);padding:5px 11px;border:1px solid rgba(120,120,120,.35);border-radius:999px;background:rgba(255,255,255,.92);color:#334;font:12px/1.4 system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.12);opacity:.88}
+.dtc-demo-banner:hover{opacity:1}
+.dtc-demo-banner a{color:inherit;text-decoration:underline;white-space:nowrap}
+.dtc-demo-banner strong{font-weight:600}
+@media (prefers-color-scheme:dark){.dtc-demo-banner{background:rgba(30,32,38,.92);color:#cdd2dc;border-color:rgba(200,200,200,.25)}}
+@media print{.dtc-demo-banner{display:none}}
